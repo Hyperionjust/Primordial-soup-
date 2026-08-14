@@ -1,0 +1,36 @@
+{
+  "name": "@hyperionjust/primordial-soup-dsh",
+  "version": "0.1.0",
+  "description": "Collision-based memory for DeepSeek Harness: registers the soup-memory skill (cross-conversation association mechanism) as a runtime skill. User-invocable; scripts run via the session's own shell tool.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "skill-body.md"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^0.1.0-rc.0"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "memory",
+    "agent-memory",
+    "cross-conversation-memory",
+    "serendipity",
+    "llm-agents",
+    "primordial-soup"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hyperionjust/Primordial-soup-.git",
+    "directory": "adapters/ds-harness/cordis"
+  }
+}
