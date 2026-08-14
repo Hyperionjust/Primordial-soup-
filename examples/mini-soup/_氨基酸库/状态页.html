@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>原始汤 · 状态仪表盘</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; background: #faf8f4; color: #2b2b2b; padding: 20px; font-size: 14px; }
+  h1 { font-size: 19px; margin-bottom: 4px; }
+  .sub { color: #8a8377; font-size: 12px; margin-bottom: 18px; }
+  h2 { font-size: 14px; margin: 22px 0 10px; color: #5a5348; border-bottom: 1px solid #e8e2d8; padding-bottom: 5px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .kpi { background: #fff; border: 1px solid #e8e2d8; border-radius: 10px; padding: 12px 14px; }
+  .kpi .num { font-size: 24px; font-weight: 700; color: #7a5c2e; }
+  .kpi .lbl { font-size: 12px; color: #8a8377; margin-top: 2px; }
+  .bars { display: grid; gap: 10px; }
+  .bar-row { background: #fff; border: 1px solid #e8e2d8; border-radius: 10px; padding: 10px 14px; }
+  .bar-head { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 6px; gap: 12px; }
+  .bar-track { background: #efe9df; border-radius: 6px; height: 8px; overflow: hidden; }
+  .bar-fill { background: #b08b4f; height: 100%; border-radius: 6px; }
+  .bar-fill.hot { background: #c25e3a; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e8e2d8; border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #f0ebe2; vertical-align: top; }
+  th { background: #f4efe7; font-size: 12px; color: #6b6357; white-space: nowrap; }
+  td { font-size: 12.5px; line-height: 1.5; }
+  tr:last-child td { border-bottom: none; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; white-space: nowrap; }
+  .p-ok { background: #e3efdd; color: #3d6b2f; }
+  .p-wait { background: #f5ead2; color: #8a6a24; }
+  .p-no { background: #f3ddd6; color: #9c3f22; }
+  .p-meh { background: #e8e5e0; color: #6b6357; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { background: #fff; border: 1px solid #e0d8c9; border-radius: 999px; padding: 3px 10px; font-size: 12px; color: #5a5348; }
+  .tag b { color: #7a5c2e; }
+  .tag.dom { background: #f2f5ef; border-color: #cfdac4; color: #47603a; }
+  .tag.dom b { color: #3d6b2f; }
+  .p-cat { background: #eee8f0; color: #5d4a6b; }
+  .cnt { font-size: 12px; color: #a09a8e; font-weight: 400; }
+  td.nw { white-space: nowrap; color: #8a8377; font-size: 12px; }
+  td.prog { background: #fdfaf4; }
+  .idea { background: #fff; border: 1px solid #e8e2d8; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+  .idea-t { font-size: 13px; font-weight: 700; color: #5a5348; margin-bottom: 4px; }
+  .idea-d { font-size: 12.5px; line-height: 1.65; color: #4a453d; }
+  .gloss { display: block; font-size: 10.5px; color: #b0a89a; font-weight: 400; margin-top: 1px; letter-spacing: 0; }
+  th.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 18px; }
+  th.sortable:hover { background: #ece5d9; }
+  th.sortable::after { content: "⇅"; position: absolute; right: 6px; color: #c3bbab; font-size: 10px; }
+  th.sortable.asc::after { content: "↑"; color: #7a5c2e; }
+  th.sortable.desc::after { content: "↓"; color: #7a5c2e; }
+  .err { background: #fdf0ec; border: 1px solid #eec7ba; color: #8c3a1e; padding: 14px; border-radius: 10px; line-height: 1.6; word-break: break-all; }
+  .foot { margin-top: 20px; font-size: 11.5px; color: #a09a8e; line-height: 1.6; }
+  details.openq { background: #fff; border: 1px solid #e8e2d8; border-radius: 10px; padding: 8px 14px; margin-bottom: 8px; }
+  details.openq summary { cursor: pointer; font-size: 12.5px; color: #5a5348; }
+  details.openq summary::marker { color: #b08b4f; }
+  details.openq ul { margin: 8px 0 4px 18px; }
+  details.openq li { font-size: 12.5px; line-height: 1.6; margin-bottom: 4px; color: #4a453d; }
+  .section-foot { margin-top: 10px; font-size: 11.5px; color: #a09a8e; line-height: 1.6; }
+</style>
+</head>
+<body>
+<h1>原始汤 · 状态仪表盘</h1>
+<div class="sub">数据截至 2026-08-14 05:00 · 由原始汤会话归档或潮汐重建时刷新（预生成式）</div>
+<div id="app"></div>
+<div class="foot">数据源：_氨基酸库/INDEX.md 与 闪电台账.md。M4 簇判定属人工/潮汐职责，不在本页自动计算。抽样权重口径见 闪电抽样器.py 输出（含逐行解析审计）。重建方式：运行 _氨基酸库/状态页生成器.py 后刷新 artifact。</div>
+<script>
+const RAW = "===INDEX===\n# 原始汤 · 氨基酸库（合成夹具，虚构）\n\n> 本索引为冒烟测试合成数据，卡名与内容 100% 虚构，不指代任何真实讨论。\n> 行格式固定，便于脚本抽取，勿改列结构。新行一律追加到表格末尾。\n\n| 编号 | 日期 | 文件夹 | 主题 | 标签 | 一句话结论 |\n|:----:|------|--------|------|------|-----------|\n| A-001 | 2026-08-01 | 讨论：测试甲 | （虚构）用统计学评估联想机制 | #评估 #知识管理 @统计学 | （虚构）先分层再算分 |\n| A-002 | 2026-08-02 | 讨论：测试乙 | （虚构）机制设计中的心理学激励 | #机制设计 #激励 @心理学 | （虚构）激励约束前置 |\n| A-003 | 2026-08-03 | 研究：测试丙 | （虚构）语言学视角的机制命名 | #机制设计 #写作规范 @语言学 | （虚构）命名即接口 |\n| A-004 | 2026-08-04 | 机制：测试丁 | （虚构）闪电抽样参数整定 | #机制设计 #联想机制 | （虚构）参数可复现优先 |\n| A-005 | 2026-08-05 | 讨论：测试戊 | （虚构）复盘归档完整性 | #复盘 #归档 @历史 | （虚构）复盘在回写闭环 |\n| A-006 | 2026-08-06 | 研究：测试己 | （虚构）写作可读性检查点 | #写作 #内容创作 | （虚构）检查点在成文前 |\n\n===PRODUCTS===\n# 产品台账（合成夹具，虚构）\n\n> 本台账为冒烟测试合成数据，内容 100% 虚构，三表结构参照契约：已完成（产品|类别|日期|概述）、待完成（多一列当前进度）、早期设想（标题|描述）。\n\n## 已完成\n\n| 产品 | 类别 | 日期 | 概述 |\n|------|------|------|------|\n| 测试产品甲 | skill | 2026-08-01 | （虚构）已完成产品甲的概述文字。 |\n| 测试产品乙 | 报告 | 2026-08-02 | （虚构）已完成产品乙的概述文字。 |\n\n## 待完成\n\n| 产品 | 类别 | 日期 | 概述 | 当前进度 |\n|------|------|------|------|---------|\n| 测试产品丙 | 机制 | 开工 2026-08-03 | （虚构）待完成产品丙的概述文字。 | 卡在设计评审一步。 |\n\n## 早期设想\n\n| 标题 | 描述 |\n|------|------|\n| 测试设想甲 | （虚构）只讨论过、未立项未否决的设想甲描述。 |\n\n===LEDGER===\n# 闪电台账（合成夹具，虚构）\n\n> 本台账为冒烟测试合成数据，全部卡名/会话/数字 100% 虚构。\n> 列结构勿改，脚本依赖。用户裁定取值：强认可 / 认可 / 无感 / 反对 / 待补。\n> 拆分裁定规范句式：备注追加〔卡级裁定：卡全名=档；卡全名=档〕，抽样器按卡取裁定、仅强认可卡 ×2。\n\n| 日期 | 会话 | 抽中氨基酸 | 是否呈现 | 用户裁定 | 备注 |\n|------|------|-----------|---------|---------|------|\n| 2026-08-01 | 会话：测试甲议题 | 讨论：测试甲、讨论：测试乙 | 是 | 待补 | 〔卡级裁定：讨论：测试甲=强认可；讨论：测试乙=无感〕 |\n| 2026-08-02 | 会话：测试丙议题 | 研究：测试丙、机制：测试丁、讨论：测试戊 | 是（仅研究：测试丙） | 认可 | 测试丁卡无有效碰撞（静默） |\n| 2026-08-03 | 会话：测试甲己议题 | 讨论：测试甲、研究：测试己 | 是 | 认可 | 甲卡Q1与己卡结论叠加成立 |\n| 2026-08-04 | 会话：全库通读 | 未执行随机抽样 | 是 | 认可 | 非抽样行：任务即全池通读，不参与权重统计 |\n| 2026-08-05 | 会话：测试乙丙议题 | 讨论：测试乙、研究：测试丙 | 是 | 无感 | 两卡结论叠加但无新增信息量 |\n| 2026-08-06 | 会话：测试丁戊乙议题一 | 讨论：测试丁、讨论：测试戊、讨论：测试乙 | 否 | — | 测试乙卡无有效碰撞（静默） |\n| 2026-08-07 | 会话：测试丁戊乙议题二 | 讨论：测试丁、讨论：测试戊、讨论：测试乙 | 否 | — | 测试丁卡无有效碰撞（静默） |\n| 2026-08-08 | 会话：测试乙丙己议题 | 讨论：测试乙、研究：测试丙、研究：测试己、讨论：测试丁、讨论：测试戊 | 否 | — | 测试乙卡无有效碰撞（静默） |\n| 2026-08-09 | 会话：测试丙己议题一 | 研究：测试丙、研究：测试己、讨论：测试丁、讨论：测试戊 | 否 | — | 测试丙卡无有效碰撞（静默） |\n| 2026-08-10 | 会话：测试乙戊议题 | 讨论：测试乙、讨论：测试戊、讨论：测试丁、研究：测试丙、研究：测试己 | 否 | — | 测试戊卡无有效碰撞（静默） |\n| 2026-08-11 | 会话：测试己丁议题 | 研究：测试己、讨论：测试丁、讨论：测试戊、研究：测试丙 | 否 | — | 测试己卡无有效碰撞（静默） |\n| 2026-08-12 | 会话：测试乙丁议题 | 讨论：测试乙、讨论：测试丁、讨论：测试戊、研究：测试丙、研究：测试己 | 否 | — | 测试丁卡无有效碰撞（静默） |\n| 2026-08-13 | 会话：测试丙丁议题 | 研究：测试丙、讨论：测试丁、讨论：测试戊、研究：测试己 | 否 | — | 测试丙卡无有效碰撞（静默） |\n| 2026-08-14 | 会话：测试戊己议题 | 讨论：测试戊、讨论：测试丁、研究：测试丙、研究：测试己 | 否 | — | 测试戊卡无有效碰撞（静默） |\n| 2026-08-15 | 会话：测试己戊议题 | 研究：测试己、讨论：测试戊、讨论：测试丁、研究：测试丙 | 否 | — | 测试己卡无有效碰撞（静默） |\n| 2026-08-16 | 会话：测试丁乙议题 | 讨论：测试丁、讨论：测试戊、讨论：测试乙、研究：测试丙、研究：测试己 | 否 | — | 测试丁卡无有效碰撞（静默） |\n| 2026-08-17 | 会话：测试丙丁议题二 | 研究：测试丙、讨论：测试丁、讨论：测试戊、研究：测试己 | 否 | — | 测试丙卡无有效碰撞（静默） |\n| 2026-08-18 | 会话：测试戊丙议题 | 讨论：测试戊、讨论：测试丁、研究：测试丙、研究：测试己 | 否 | — | 测试戊卡无有效碰撞（静默） |\n| 2026-08-19 | 会话：测试己丙议题 | 研究：测试己、讨论：测试丁、讨论：测试戊、研究：测试丙 | 否 | — | 测试己卡无有效碰撞（静默） |\n\n===OPENQ===\n7 2\n===OPENQLIST===\n机制：测试丁\t**Q1｜（虚构）衰减底数 0.7 是否应随池规模缩放？** 背景说明一：池越大单卡被抽到的天然概率越低，衰减是否要补偿。\n研究：测试己\t**Q1｜（虚构）机械检查与人工判断的边界在哪？** 背景说明一：可机械化规则与需要判断的句子之间没有现成分界线。\n讨论：测试戊\t**Q1｜（虚构）回写标注的时效性如何保证？** 背景说明一：解答发生后若不及时回写，旧题会继续消耗碰撞预算。\n讨论：测试甲\t**Q1｜（虚构）分层后各层的样本量要多大才稳？** 背景说明一：层内样本过少时统计波动会吞掉真实差异。\n讨论：测试甲\t**Q2｜（虚构）漏报率能否用模拟数据标定？** 背景说明二：缺 ground truth 时只能靠合成数据估偏。\n===OUTPUTS===\n{\"蛋白质\": 1, \"工单\": 0, \"文章\": 0, \"skill\": 0}";
+const M5_DEADLINE = new Date("2026-10-08T00:00:00");
+const M5_START = new Date("2026-08-08T00:00:00");
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function cut(s,n){ s=String(s); return s.length>n ? s.slice(0,n)+"…" : s; }
+function parseTable(txt){
+  const rows = txt.split("\n").filter(l=>l.trim().startsWith("|"))
+    .map(l=>l.split("|").slice(1,-1).map(c=>c.trim()));
+  return rows.filter(r=>!/^[-:\s]*$/.test(r.join(""))).slice(1);
+}
+// 表格排序：点表头升序、再点降序、第三次回到原始顺序。数字按数值比，其余按中文本地化字典序。
+function makeSortable(){
+  document.querySelectorAll("table").forEach(tb=>{
+    const body = tb.tBodies[0]; if(!body) return;
+    const rows = Array.from(body.rows); if(rows.length < 3) return;
+    const head = rows[0], data = rows.slice(1);
+    data.forEach((r,i)=>r.dataset.ord = i);
+    Array.from(head.cells).forEach((th,ci)=>{
+      th.classList.add("sortable");
+      th.title = "点击排序";
+      th.addEventListener("click", ()=>{
+        const cur = th.classList.contains("asc") ? "asc" : th.classList.contains("desc") ? "desc" : "";
+        const next = cur === "" ? "asc" : cur === "asc" ? "desc" : "";
+        Array.from(head.cells).forEach(c=>c.classList.remove("asc","desc"));
+        if(next) th.classList.add(next);
+        const val = r => (r.cells[ci] ? r.cells[ci].textContent.trim() : "");
+        const num = s => { const m = s.replace(/[^0-9.\-]/g,""); return m === "" ? null : parseFloat(m); };
+        const sorted = data.slice().sort((a,b)=>{
+          if(!next) return (+a.dataset.ord) - (+b.dataset.ord);
+          const x = val(a), y = val(b);
+          const nx = num(x), ny = num(y);
+          let c;
+          if(nx !== null && ny !== null && !isNaN(nx) && !isNaN(ny) && x.length < 14 && y.length < 14) c = nx - ny;
+          else c = x.localeCompare(y, "zh-Hans-CN");
+          return next === "asc" ? c : -c;
+        });
+        sorted.forEach(r=>body.appendChild(r));
+      });
+    });
+  });
+}
+function verdictPill(v){
+  if(v.includes("认可")) return '<span class="pill p-ok">'+esc(v)+'</span>';
+  if(v.includes("反对")) return '<span class="pill p-no">'+esc(v)+'</span>';
+  if(v.includes("无感")) return '<span class="pill p-meh">'+esc(v)+'</span>';
+  return '<span class="pill p-wait">'+esc(v||"待补")+'</span>';
+}
+function bar(label, val, target, rightText){
+  const pct = target > 0 ? Math.min(100, Math.round(val/target*100)) : 0;
+  return '<div class="bar-row"><div class="bar-head"><span>'+label+'</span><span>'+(rightText!==undefined?rightText:(val+' / '+target+(pct>=100?'（已达标）':'')))+'</span></div><div class="bar-track"><div class="bar-fill'+(pct>=100?' hot':'')+'" style="width:'+pct+'%"></div></div></div>';
+}
+function main(){
+  try{
+    const out = RAW;
+    const idx  = parseTable(out.split("===INDEX===")[1].split("===PRODUCTS===")[0]);
+    const prodRaw = (out.split("===PRODUCTS===")[1]||"").split("===LEDGER===")[0];
+    const prodSec = n => { const m = prodRaw.split("\n## "); const s = m.find(x=>x.startsWith(n)); return s ? parseTable(s) : []; };
+    const prodDone = prodSec("已完成"), prodWip = prodSec("待完成"), prodIdea = prodSec("早期设想");
+    const led  = parseTable(out.split("===LEDGER===")[1].split("===OPENQ===")[0]);
+    const oq   = (out.split("===OPENQ===")[1].split("===OPENQLIST===")[0]||"").trim().split(/\s+/);
+    const oqTotal = parseInt(oq[0]||"0") || 0, oqClosed = parseInt(oq[1]||"0") || 0;
+    const oqListRaw = out.split("===OPENQLIST===")[1].split("===OUTPUTS===")[0];
+    const oqList = oqListRaw.split("\n").map(l=>l.replace(/\r$/,"")).filter(l=>l.length>0)
+      .map(l=>{ const i=l.indexOf("\t"); return i>=0 ? [l.slice(0,i), l.slice(i+1)] : [l, ""]; });
+    const outputsRaw = out.split("===OUTPUTS===")[1] || "{}";
+    const outputs = JSON.parse(outputsRaw.trim() || "{}");
+
+    const presented = led.filter(r=>(r[3]||"").startsWith("是"));
+    const nOK   = led.filter(r=>(r[4]||"").includes("认可")).length;
+    const nNo   = led.filter(r=>(r[4]||"").includes("反对")).length;
+    const nMeh  = led.filter(r=>(r[4]||"").includes("无感")).length;
+    const pend  = led.filter(r=>(r[3]||"").startsWith("是") && (r[4]||"").includes("待补"));
+
+    const now = new Date();
+    const daysLeft = Math.max(0, Math.ceil((M5_DEADLINE - now) / 86400000));
+    const totalDays = Math.round((M5_DEADLINE - M5_START) / 86400000);
+    const elapsed = Math.min(totalDays, Math.max(0, totalDays - daysLeft));
+
+    const tagCount = {};
+    idx.forEach(r=>(r[4]||"").split(/\s+/).forEach(t=>{ if(t.startsWith("#")) tagCount[t]=(tagCount[t]||0)+1; }));
+    const topTags = Object.entries(tagCount).sort((a,b)=>b[1]-a[1]).slice(0,14);
+
+    const domCount = {};
+    let domCards = 0;
+    idx.forEach(r=>{
+      const ds = (r[4]||"").split(/\s+/).filter(t=>t.startsWith("@"));
+      if(ds.length) domCards++;
+      ds.forEach(t=>domCount[t]=(domCount[t]||0)+1);
+    });
+    const domTags = Object.entries(domCount).sort((a,b)=>b[1]-a[1]);
+
+    let h = "";
+    h += '<div class="kpis">'
+      + '<div class="kpi"><div class="num">'+idx.length+'</div><div class="lbl">氨基酸<span class="gloss">一次讨论的结论卡</span></div></div>'
+      + '<div class="kpi"><div class="num">'+led.length+'</div><div class="lbl">闪电抽取<span class="gloss">随机翻出旧卡撞今天的话题</span></div></div>'
+      + '<div class="kpi"><div class="num">'+presented.length+'</div><div class="lbl">碰撞呈现</div></div>'
+      + '<div class="kpi"><div class="num">'+nOK+'</div><div class="lbl">裁定认可</div></div>'
+      + '<div class="kpi"><div class="num">'+pend.length+'</div><div class="lbl">待裁定</div></div>'
+      + '<div class="kpi"><div class="num">'+(oqTotal-oqClosed)+'<span style="font-size:13px;color:#a09a8e"> / '+oqTotal+'</span></div><div class="lbl">未解问题 开放/总</div></div>'
+      + '</div>'
+      + '<div class="section-foot">口径：闪电抽取＝台账数据行（含静默与非抽样行）；碰撞呈现＝『是否呈现』以「是」开头的行；待裁定＝已呈现且裁定为「待补」。</div>';
+
+    const folderTypeCount = {};
+    idx.forEach(r=>{
+      const folder = r[2]||"";
+      const ci = folder.indexOf("：");
+      const prefix = ci >= 0 ? folder.slice(0, ci) : "其他";
+      folderTypeCount[prefix] = (folderTypeCount[prefix]||0) + 1;
+    });
+    const folderTypeOrder = ["机制","讨论","研究","产品"];
+    const folderTypeEntries = Object.entries(folderTypeCount).sort((a,b)=>{
+      const ai = folderTypeOrder.indexOf(a[0]), bi = folderTypeOrder.indexOf(b[0]);
+      if(ai === -1 && bi === -1) return b[1]-a[1];
+      if(ai === -1) return 1;
+      if(bi === -1) return -1;
+      return ai - bi;
+    });
+
+    h += '<h2>产出分类</h2><div class="kpis">'
+      + '<div class="kpi"><div class="num">'+(outputs["蛋白质"]||0)+'</div><div class="lbl">蛋白质<span class="gloss">多张卡合成的综述</span></div></div>'
+      + '<div class="kpi"><div class="num">—</div><div class="lbl">标准</div></div>'
+      + '<div class="kpi"><div class="num">'+(outputs["文章"]||0)+'</div><div class="lbl">文章</div></div>'
+      + '<div class="kpi"><div class="num">'+(outputs["工单"]||0)+'</div><div class="lbl">工单</div></div>'
+      + '<div class="kpi"><div class="num">'+(outputs["skill"]||0)+'</div><div class="lbl">skill</div></div>'
+      + '</div>'
+      + '<div class="tags" style="margin-top:10px">'
+      + folderTypeEntries.map(([k,v])=>'<span class="tag">'+esc(k)+' <b>'+v+'</b></span>').join("")
+      + '</div>'
+      + '<div class="section-foot">标准类暂无正式标签约定（#公理 待定）；文章按 文章：*.md 命名约定统计；类型徽章按 INDEX『文件夹』列前缀统计；氨基酸总数见顶部，不重复列示。</div>';
+
+    const catPill = c => '<span class="pill p-cat">'+esc(c)+'</span>';
+    h += '<h2>产品视图 · 已完成 <span class="cnt">'+prodDone.length+'</span></h2>'
+      + '<table><tr><th>产品</th><th>类别</th><th>日期</th><th>概述</th></tr>'
+      + prodDone.slice().reverse().map(r=>'<tr><td><b>'+esc(r[0])+'</b></td><td>'+catPill(r[1])+'</td><td class="nw">'+esc(r[2])+'</td><td>'+esc(r[3])+'</td></tr>').join("")
+      + '</table>'
+      + '<div class="section-foot">口径：东西在盘上、能交付、不再需要动作。新→旧排列。数据源 _氨基酸库/产品台账.md。</div>';
+
+    h += '<h2>产品视图 · 待完成 <span class="cnt">'+prodWip.length+'</span></h2>'
+      + '<table><tr><th>产品</th><th>类别</th><th>日期</th><th>概述</th><th>当前进度</th></tr>'
+      + prodWip.map(r=>'<tr><td><b>'+esc(r[0])+'</b></td><td>'+catPill(r[1])+'</td><td class="nw">'+esc(r[2])+'</td><td>'+esc(r[3])+'</td><td class="prog">'+esc(r[4])+'</td></tr>').join("")
+      + '</table>'
+      + '<div class="section-foot">口径：已立项或已开单、有明确下一步动作。「当前进度」写卡在哪一步，不写百分比——百分比是自评，卡点是事实。</div>';
+
+    h += '<h2>早期设想 <span class="cnt">'+prodIdea.length+'</span></h2>'
+      + prodIdea.map(r=>'<div class="idea"><div class="idea-t">'+esc(r[0])+'</div><div class="idea-d">'+esc(r[1])+'</div></div>').join("")
+      + '<div class="section-foot">口径：只在讨论里成过形，既没立项也没否决。和上面两张表分开放，是为了让「已承诺的事」与「想过的事」不互相稀释。</div>';
+
+    h += '<h2>机制哨兵（M3–M5 触发进度）</h2><div class="bars">'
+      + '<div class="bar-row"><div class="bar-head"><span>M3 加权抽样：已构建（2026-08-09）· 闪电抽样器.py 运行中</span><span>权重数据 '+led.length+' 行</span></div><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div></div>'
+      + bar("M5 结算：氨基酸颗数", idx.length, 25)
+      + bar("M5 结算：时间闸门（2026-10-08 到期）", elapsed, totalDays, daysLeft > 0 ? "剩余 "+daysLeft+" 天" : "已到期")
+      + '<div class="bar-row"><div class="bar-head"><span>M4 蛋白质合成：簇判定属潮汐/人工，本页不自动计算</span><span>碰撞裁定供给：认可 '+nOK+' · 无感 '+nMeh+' · 反对 '+nNo+'</span></div></div>'
+      + '</div>'
+      + '<div class="section-foot">M3 已构建，此行是状态标注非触发进度；M4 簇判定见最新潮汐周报；M5 双闸门（25 颗或 2026-10-08）先到为准，结算时两硬指标（未解问题关闭数、碰撞改变结论数）均为零则闪电降级为手动。</div>';
+
+    if (pend.length){
+      h += '<h2>待裁定（'+pend.length+'）</h2><table><tr><th>日期</th><th>会话</th><th>备注</th></tr>'
+        + pend.map(r=>'<tr><td>'+esc(r[0])+'</td><td>'+esc(cut(r[1],28))+'</td><td>'+esc(cut(r[5],80))+'</td></tr>').join("")
+        + '</table>'
+        + '<div class="section-foot">仅呈现过碰撞的行需要裁定；本表不出现即无欠账。</div>';
+    }
+
+    const openqByFolder = {};
+    oqList.forEach(([folder,item])=>{
+      if(!openqByFolder[folder]) openqByFolder[folder] = [];
+      openqByFolder[folder].push(item);
+    });
+    const openqGroups = Object.entries(openqByFolder).sort((a,b)=>b[1].length-a[1].length);
+
+    h += '<h2>开放的未解问题（'+oqList.length+'）</h2>'
+      + openqGroups.map(([folder,items])=>
+          '<details class="openq"><summary>'+esc(folder)+'（'+items.length+' 条）</summary><ul>'
+          + items.map(it=>'<li>'+esc(cut(it,160))+'</li>').join("")
+          + '</ul></details>'
+        ).join("")
+      + '<div class="section-foot">关闭＝条目内有「已由/已被」回写（M2 机制）；未解问题关闭数是 M5 的北极星指标。</div>';
+
+    h += '<h2>最近闪电（新→旧）</h2><table><tr><th>日期</th><th>会话</th><th>裁定</th><th>备注</th></tr>'
+      + led.slice(-6).reverse().map(r=>'<tr><td>'+esc(r[0])+'</td><td>'+esc(cut(r[1],26))+'</td><td>'+verdictPill(r[4]||"")+'</td><td>'+esc(cut(r[5],90))+'</td></tr>').join("")
+      + '</table>'
+      + '<div class="section-foot">每行＝一次抽取事件，被静默的抽取也登记（沉默可审计）；完整历史见 闪电台账.md。</div>';
+
+    h += '<h2>氨基酸总表（新→旧）</h2><table><tr><th>编号</th><th>日期</th><th>文件夹</th><th>一句话结论</th></tr>'
+      + idx.slice().reverse().map(r=>'<tr><td>'+esc(r[0])+'</td><td>'+esc(r[1])+'</td><td>'+esc(cut(r[2],24))+'</td><td>'+esc(cut(r[5],96))+'</td></tr>').join("")
+      + '</table>'
+      + '<div class="section-foot">INDEX.md 的镜像视图；检索一律以 INDEX 为唯一入口。编号按登记顺序发放、一经发出不变，注销卡的号作废不复用；文件夹名仍是全库主键，编号是别名。</div>';
+
+    h += '<h2>标签分布</h2><div class="tags">'
+      + topTags.map(([t,c])=>'<span class="tag">'+esc(t)+' <b>'+c+'</b></span>').join("")
+      + '</div>'
+      + '<div class="section-foot">统计 INDEX『标签』列里 # 开头的方法维标签；与『产出分类』的文件夹前缀徽章是两套维度。</div>';
+
+    h += '<h2>借力知识领域</h2><div class="tags">'
+      + (domTags.length ? domTags.map(([t,c])=>'<span class="tag dom">'+esc(t)+' <b>'+c+'</b></span>').join("")
+                        : '<span class="tag dom">暂无标注</span>')
+      + '</div>'
+      + '<div class="section-foot">口径：@ 标的是这张卡的论证从哪个外部知识领域借了框架、隐喻、证据或方法，不标 AI／知识管理等本域；一卡 0–3 个，允许为空。'
+      + '当前 '+domCards+' / '+idx.length+' 张卡有标注，'+(idx.length-domCards)+' 张判空（未借外部领域）。跨领域是闪电碰撞的高产区。</div>';
+
+    document.getElementById("app").innerHTML = h;
+    makeSortable();
+  }catch(e){
+    document.getElementById("app").innerHTML = '<div class="err">状态页渲染失败：'+esc(e.message)+'——请把此信息发给 Claude 重新生成本页。</div>';
+  }
+}
+main();
+</script>
+</body>
+</html>
